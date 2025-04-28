@@ -3,11 +3,23 @@
 set -euo pipefail
 
 # === CONFIG VARIABLES ===
-DISK="/dev/sda"
-PV_NAME="pvname"
-LVM_GROUP_NAME="lvname"
-SWAP_SPACE="1G" # example: "8G"
-ROOT_SPACE="4G" # example: "64G"
+while getopts "d:p:l:s:r" option
+do
+  case "${option}" in
+    d) DISK=${OPTARG};;
+    p) PV_NAME=${OPTARG};;
+    l) LVM_GROUP_NAME=${OPTARG};;
+    s) SWAP_SPACE=${OPTARG};;
+    r) ROOT_SPACE=${OPTARG};;
+  esac
+done
+
+# Check if required variables are set
+if [[ -z "$DISK" || -z "$PV_NAME" || -z "$LVM_GROUP_NAME" || -z "$SWAP_SPACE" || -z "$ROOT_SPACE" ]]; then
+  echo "Error: Missing required options."
+  echo "Usage: $0 -d <disk> -p <pv_name> -l <lvm_group_name> -s <swap_space> -r <root_space>"
+  exit 1
+fi
 
 # === WARN USER ===
 echo "!!! WARNING: This will erase all data on $DISK !!!"
