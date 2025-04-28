@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # === CONFIG VARIABLES ===
-while getopts "d:p:l:s:r" option
+while getopts "d:p:l:s:r:" option
 do
   case "${option}" in
     d) DISK=${OPTARG};;
@@ -15,7 +15,7 @@ do
 done
 
 # Check if required variables are set
-if [[ -z "$DISK" || -z "$PV_NAME" || -z "$LVM_GROUP_NAME" || -z "$SWAP_SPACE" || -z "$ROOT_SPACE" ]]; then
+if [[ -z "${DISK:-}" || -z "${PV_NAME:-}" || -z "${LVM_GROUP_NAME:-}" || -z "${SWAP_SPACE:-}" || -z "${ROOT_SPACE:-}" ]]; then
   echo "Error: Missing required options."
   echo "Usage: $0 -d <disk> -p <pv_name> -l <lvm_group_name> -s <swap_space> -r <root_space>"
   exit 1
