@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # === CONFIG VARIABLES ===
-while getopts "d:p:l:s:r:" option
+while getopts "d:p:l:s:r:n:" option
 do
   case "${option}" in
     d) DISK=${OPTARG};;
@@ -11,11 +11,12 @@ do
     l) LVM_GROUP_NAME=${OPTARG};;
     s) SWAP_SPACE=${OPTARG};;
     r) ROOT_SPACE=${OPTARG};;
+    n) HOSTN=${OPTARG};;
   esac
 done
 
 # Check if required variables are set
-if [[ -z "${DISK:-}" || -z "${PV_NAME:-}" || -z "${LVM_GROUP_NAME:-}" || -z "${SWAP_SPACE:-}" || -z "${ROOT_SPACE:-}" ]]; then
+if [[ -z "${DISK:-}" || -z "${PV_NAME:-}" || -z "${LVM_GROUP_NAME:-}" || -z "${SWAP_SPACE:-}" || -z "${ROOT_SPACE:-}" || -z "${HOSTN:-}" ]]; then
   echo "Error: Missing required options."
   echo "Usage: $0 -d <disk> -p <pv_name> -l <lvm_group_name> -s <swap_space> -r <root_space>"
   exit 1
@@ -77,4 +78,38 @@ swapon "/dev/$LVM_GROUP_NAME/swap"
 mkdir -p /mnt/boot
 mount "${DISK}1" /mnt/boot
 
-echo "Done. You can now proceed with pacstrap installation."
+pacstrap -K /mnt base linux linux-firmware CPU-ucode nvim man-db man-pages texinfo lvm2
+genfstab -U /mnt >> /mnt/etc/fstab
+
+arch-chroot /mnt
+
+ln -sf /usr/share/zoneinfo/Europe/Berlin /etc/localtime
+hwclock --systohc
+
+sed -i '/^#de_DE.UTF-8/s/^#//g' /etc/locale.gen
+locale-gen
+echo "LANG=de_DE.UTF-8" > /etc/locale.conf
+echo -e "KEYMAP=us\nFONT=latarcyrheb-sun32" > /etc/vconsole.conf
+echo -e "$HOSTN" > /etc/hostname
+
+systemctl start systemd-networkd
+systemctl start systemd-resolved
+
+sed -i '/^HOOKS=/c\HOOKS=(base systemd autodetect microcode modconf kms keyboard sd-vconsole block sd-encrypt lvm2 filesystems fsck)/g' /etc/mkinitcpio.conf
+
+echo "Set root password"
+passwd
+
+bootctl install
+
+LUKS_UUID=$(cryptsetup luksUUID "${DISK}2")
+cat <<EOF | tee /boot/loader/entries/arch.conf > /dev/null
+title   Arch
+linux   /vmlinuz-linux
+initrd  /initramfs-linux.img
+options rd.luks.name=${LUKS_UUID}=${LVM_GROUP_NAME} root=/dev/${LVM_GROUP_NAME}/root rw acpi_enforce_resources=lax
+EOF
+mkinitcpio -P
+
+
+echo "Done"
