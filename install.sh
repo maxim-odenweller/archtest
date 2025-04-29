@@ -78,7 +78,7 @@ swapon "/dev/$LVM_GROUP_NAME/swap"
 mkdir -p /mnt/boot
 mount "${DISK}1" /mnt/boot
 
-pacstrap -K /mnt base linux linux-firmware CPU-ucode nvim man-db man-pages texinfo lvm2
+pacstrap -K /mnt base linux linux-firmware amd-ucode nvim man-db man-pages texinfo lvm2
 genfstab -U /mnt >> /mnt/etc/fstab
 
 arch-chroot /mnt
